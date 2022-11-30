@@ -73,6 +73,8 @@ static struct luaL_Reg node_meta[] = {
   { "field", node_field },
   { "named", node_named },
   { "missing", node_missing },
+  { "edit", node_edit },
+  { "has_changes", node_has_changes },
   { "has_error", node_has_error },
   { "sexpr", node_sexpr },
   { "child_count", node_child_count },
@@ -480,6 +482,33 @@ static int tree_edit(lua_State *L)
   return 0;
 }
 
+static int node_edit(lua_State *L)
+{
+  if (lua_gettop(L) < 10) {
+    lua_pushstring(L, "not enough args to node:edit()");
+    return lua_error(L);
+  }
+
+  TSNode node;
+  if (!node_check(L, 1, &node)) {
+    return 0;
+  }
+
+  uint32_t start_byte = (uint32_t)luaL_checkint(L, 2);
+  uint32_t old_end_byte = (uint32_t)luaL_checkint(L, 3);
+  uint32_t new_end_byte = (uint32_t)luaL_checkint(L, 4);
+  TSPoint start_point = { (uint32_t)luaL_checkint(L, 5), (uint32_t)luaL_checkint(L, 6) };
+  TSPoint old_end_point = { (uint32_t)luaL_checkint(L, 7), (uint32_t)luaL_checkint(L, 8) };
+  TSPoint new_end_point = { (uint32_t)luaL_checkint(L, 9), (uint32_t)luaL_checkint(L, 10) };
+
+  TSInputEdit edit = { start_byte, old_end_byte, new_end_byte,
+                       start_point, old_end_point, new_end_point };
+
+  ts_node_edit(&node, &edit);
+
+  return 1;
+}
+
 // Use the top of the stack (without popping it) to create a TSRange, it can be
 // either a lua table or a TSNode
 static void range_from_lua(lua_State *L, TSRange *range)
@@ -874,6 +903,16 @@ static int node_missing(lua_State *L)
     return 0;
   }
   lua_pushboolean(L, ts_node_is_missing(node));
+  return 1;
+}
+
+static int node_has_changes(lua_State *L)
+{
+  TSNode node;
+  if (!node_check(L, 1, &node)) {
+    return 0;
+  }
+  lua_pushboolean(L, ts_node_has_changes(node));
   return 1;
 }
 
